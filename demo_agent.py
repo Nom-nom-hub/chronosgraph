@@ -1,5 +1,7 @@
-from chronosgraph_sdk import ChronosGraphSDK
 import time
+
+from chronosgraph_sdk import ChronosGraphSDK
+
 
 def run_demo():
     print("Initializing ChronosGraph SDK...")
@@ -42,7 +44,12 @@ def run_demo():
     
     print("\n--- Adding Explicit Knowledge (Entities) ---")
     print("Agent learns a new fact...")
-    ent_id = sdk.add_knowledge(agent_id, "Lumina Cap", "A rare, glowing mushroom found in dark forests. It is safe to touch but tastes terrible.", "flora")
+    ent_id = sdk.add_knowledge(
+        agent_id,
+        "Lumina Cap",
+        "A rare, glowing mushroom found in dark forests. It is safe to touch but tastes terrible.",
+        "flora"
+    )
     print(f"Added Entity 'Lumina Cap': {ent_id}")
     
     print("\n--- Establishing Relationships (Graph) ---")
@@ -61,7 +68,10 @@ def run_demo():
     print(context)
     
     print("\n--- Conclusion ---")
-    print("The agent can now use this context to make an informed decision (e.g., 'It tastes terrible, so I shouldn't eat it').")
+    print(
+        "The agent can now use this context to make an informed decision "
+        "(e.g., 'It tastes terrible, so I shouldn't eat it')."
+    )
     print("Demo completed.")
 
 if __name__ == "__main__":

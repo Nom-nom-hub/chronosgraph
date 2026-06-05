@@ -1,10 +1,23 @@
-import unittest
-import sqlite3
 import os
-import json
+import sqlite3
+import unittest
+from unittest.mock import MagicMock
+
 import numpy as np
-from chronosgraph_engine import ChronosGraphEngine
-from chronosgraph_sdk import ChronosGraphSDK
+
+from .chronosgraph_engine import ChronosGraphEngine
+from .chronosgraph_sdk import ChronosGraphSDK
+from .exceptions import (
+    AgentNotFoundError,
+    DatabaseError,
+    EpisodeNotFoundError,
+    EntityNotFoundError,
+    RelationshipNotFoundError,
+    InvalidEpisodeDataError,
+    EmbeddingGenerationError,
+    FactExtractionError
+)
+
 
 class TestChronosGraph(unittest.TestCase):
     def setUp(self):
@@ -12,7 +25,20 @@ class TestChronosGraph(unittest.TestCase):
         if os.path.exists(self.db_path):
             os.remove(self.db_path)
         self.engine = ChronosGraphEngine(self.db_path)
-        self.sdk = ChronosGraphSDK(self.db_path)
+        
+        # Mock OpenAI client
+        self.mock_openai = MagicMock()
+        self.sdk = ChronosGraphSDK(self.db_path, openai_client=self.mock_openai)
+        
+        # Setup mock response for embeddings
+        mock_embedding_data = MagicMock()
+        mock_embedding_data.embedding = [0.1] * 1536
+        self.mock_openai.embeddings.create.return_value.data = [mock_embedding_data]
+        
+        # Setup mock response for fact extraction
+        mock_chat_response = MagicMock()
+        mock_chat_response.choices[0].message.content = '{"entities": [{"name": "TestEntity", "type": "concept", "description": "test"}], "relationships": []}'
+        self.mock_openai.chat.completions.create.return_value = mock_chat_response
 
     def tearDown(self):
         if os.path.exists(self.db_path):
@@ -139,9 +165,15 @@ class TestChronosGraph(unittest.TestCase):
     def test_08_sdk_recall_semantic(self):
         agent_id = self.sdk.initialize_agent("SDKAgent2")
         # Manually set distinct embeddings for testing semantic recall
-        self.engine.add_episode(agent_id, {"type": "thought", "content": "I like apples.", "embedding": [1.0, 0.1, 0.1]})
-        self.engine.add_episode(agent_id, {"type": "thought", "content": "I prefer bananas.", "embedding": [0.1, 1.0, 0.1]})
-        self.engine.add_episode(agent_id, {"type": "thought", "content": "Oranges are citrus.", "embedding": [0.1, 0.1, 1.0]})
+        self.engine.add_episode(agent_id, {
+            "type": "thought", "content": "I like apples.", "embedding": [1.0, 0.1, 0.1]
+        })
+        self.engine.add_episode(agent_id, {
+            "type": "thought", "content": "I prefer bananas.", "embedding": [0.1, 1.0, 0.1]
+        })
+        self.engine.add_episode(agent_id, {
+            "type": "thought", "content": "Oranges are citrus.", "embedding": [0.1, 0.1, 1.0]
+        })
 
         # Query embedding for "fruits like apples" should be closer to the "apples" embedding
         query_embedding_for_apples = [0.9, 0.0, 0.0] # Simulating a query for apples
@@ -163,7 +195,7 @@ class TestChronosGraph(unittest.TestCase):
         self.sdk.check_in(agent_id, {"type": "action", "content": "Second action for context."})
 
         context = self.sdk.get_context(agent_id, "What did I do recently?")
-        self.assertIn("Relevant past experiences:", context)
+        self.assertIn("Relevant past experiences (including shared knowledge):", context)
         self.assertIn("First thought for context.", context)
         self.assertIn("Second action for context.", context)
 
@@ -180,6 +212,29 @@ class TestChronosGraph(unittest.TestCase):
             rel = cursor.fetchone()
             self.assertIsNotNone(rel)
             self.assertEqual(rel["type"], "MENTIONS")
+
+    def test_11_error_handling_agent_not_found(self):
+        with self.assertRaises(AgentNotFoundError):
+            self.engine.get_agent("non_existent_id")
+
+    def test_12_error_handling_invalid_episode_data(self):
+        agent_id = self.engine.register_agent("ErrorAgent1")
+        with self.assertRaises(InvalidEpisodeDataError):
+            self.engine.add_episode(agent_id, {"wrong_key": "data"})
+
+    def test_13_error_handling_embedding_generation_failure(self):
+        # Mock embedding generation failure
+        self.mock_openai.embeddings.create.side_effect = Exception("OpenAI Error")
+        agent_id = self.sdk.initialize_agent("ErrorAgent2")
+        with self.assertRaises(EmbeddingGenerationError):
+            self.sdk.check_in(agent_id, {"content": "some content"})
+
+    def test_14_error_handling_fact_extraction_failure(self):
+        # Mock fact extraction failure
+        self.mock_openai.chat.completions.create.side_effect = Exception("LLM Error")
+        agent_id = self.sdk.initialize_agent("ErrorAgent3")
+        with self.assertRaises(FactExtractionError):
+            self.sdk.check_in(agent_id, {"content": "some content"}, auto_extract=True)
 
 if __name__ == "__main__":
     unittest.main(argv=["first-arg-is-ignored"], exit=False)
