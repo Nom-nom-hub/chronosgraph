@@ -15,74 +15,23 @@ from .exceptions import (
     InvalidEpisodeDataError
 )
 from .logger import logger
+from .migrations import MigrationManager
 
 
 class ChronosGraphEngine:
     def __init__(self, db_path: str = "chronosgraph.db"):
         self.db_path = db_path
+        self.migration_manager = MigrationManager(self.db_path)
         self._initialize_db()
         logger.info(f"ChronosGraphEngine initialized with database: {self.db_path}")
 
     def _initialize_db(self):
+        """Initializes the database and applies pending migrations."""
         try:
-            with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.cursor()
-                # Create Agents table
-                cursor.execute("""
-                    CREATE TABLE IF NOT EXISTS agents (
-                        agent_id TEXT PRIMARY KEY,
-                        name TEXT NOT NULL UNIQUE,
-                        description TEXT,
-                        shared_group TEXT
-                    )
-                """)
-                # Create Episodes table
-                cursor.execute("""
-                    CREATE TABLE IF NOT EXISTS episodes (
-                        episode_id TEXT PRIMARY KEY,
-                        agent_id TEXT NOT NULL,
-                        timestamp TEXT NOT NULL,
-                        type TEXT NOT NULL,
-                        content TEXT NOT NULL,
-                        embedding BLOB,
-                        tool_name TEXT,
-                        tool_input TEXT,
-                        tool_output TEXT,
-                        success BOOLEAN,
-                        parent_episode_id TEXT,
-                        FOREIGN KEY (agent_id) REFERENCES agents(agent_id),
-                        FOREIGN KEY (parent_episode_id) REFERENCES episodes(episode_id)
-                    )
-                """)
-                # Create Entities table
-                cursor.execute("""
-                    CREATE TABLE IF NOT EXISTS entities (
-                        entity_id TEXT PRIMARY KEY,
-                        agent_id TEXT NOT NULL,
-                        name TEXT NOT NULL,
-                        type TEXT NOT NULL,
-                        description TEXT,
-                        embedding BLOB,
-                        FOREIGN KEY (agent_id) REFERENCES agents(agent_id)
-                    )
-                """)
-                # Create Relationships table
-                cursor.execute("""
-                    CREATE TABLE IF NOT EXISTS relationships (
-                        relationship_id TEXT PRIMARY KEY,
-                        agent_id TEXT NOT NULL,
-                        source_id TEXT NOT NULL,
-                        target_id TEXT NOT NULL,
-                        type TEXT NOT NULL,
-                        strength REAL,
-                        timestamp TEXT NOT NULL,
-                        FOREIGN KEY (agent_id) REFERENCES agents(agent_id)
-                    )
-                """)
-                conn.commit()
-                logger.info("Database schema initialized successfully.")
-        except sqlite3.Error as e:
-            logger.error(f"Database initialization failed: {e}", extra={"error_type": "DatabaseError"})
+            self.migration_manager.apply_migrations()
+            logger.info("Database schema initialized and migrations applied successfully.")
+        except Exception as e:
+            logger.error(f"Database initialization or migration failed: {e}", extra={"error_type": "DatabaseError"})
             raise DatabaseError(e) from e
 
     def get_agent(self, agent_id: str) -> Dict[str, Any]:
