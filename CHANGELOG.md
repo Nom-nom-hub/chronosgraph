@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-06-06
+
+### Added
+- **Performance Optimization**: Implemented strategic SQL indexing in `migrations.py` (v2) for `episodes`, `entities`, and `relationships` tables to accelerate relational lookups.
+- **Vectorized Similarity Search**: Optimized `semantic_search` in `ChronosGraphEngine` using vectorized NumPy operations, significantly improving search speed for large datasets.
+- **Updated Migration Tests**: Refined `test_migrations.py` to verify the application of v2 migrations and index creation.
+
 ## [0.4.0] - 2026-06-06
 
 ### Added

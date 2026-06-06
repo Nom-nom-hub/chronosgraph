@@ -262,17 +262,32 @@ class ChronosGraphEngine:
                         (agent_id,)
                     )
                 rows = cursor.fetchall()
+                if not rows:
+                    return []
+
+                # Vectorized cosine similarity calculation
+                episode_ids = [row["episode_id"] for row in rows]
+                contents = [row["content"] for row in rows]
+                agent_names = [row["agent_name"] for row in rows]
+                
+                # Stack all stored embeddings into a single matrix
+                stored_matrix = np.stack([np.frombuffer(row["embedding"], dtype=np.float32) for row in rows])
+                
+                # Calculate norms
+                query_norm = np.linalg.norm(query_vec)
+                stored_norms = np.linalg.norm(stored_matrix, axis=1)
+                
+                # Cosine similarity: (A . B) / (||A|| * ||B||)
+                dot_products = np.dot(stored_matrix, query_vec)
+                similarities = dot_products / (query_norm * stored_norms)
                 
                 results = []
-                for row in rows:
-                    stored_vec = np.frombuffer(row["embedding"], dtype=np.float32)
-                    # Calculate cosine similarity
-                    similarity = np.dot(query_vec, stored_vec) / (np.linalg.norm(query_vec) * np.linalg.norm(stored_vec))
+                for i in range(len(rows)):
                     results.append({
-                        "episode_id": row["episode_id"],
-                        "content": row["content"],
-                        "agent_name": row["agent_name"],
-                        "similarity": float(similarity)
+                        "episode_id": episode_ids[i],
+                        "content": contents[i],
+                        "agent_name": agent_names[i],
+                        "similarity": float(similarities[i])
                     })
                 
                 # Sort by similarity descending

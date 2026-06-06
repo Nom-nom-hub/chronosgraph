@@ -46,7 +46,7 @@ class MigrationManager:
 
         migrations = [
             (1, self._migration_v1, "Initial schema creation"),
-            # Add future migrations here: (2, self._migration_v2, "Description"),
+            (2, self._migration_v2, "Strategic indexing for performance"),
         ]
 
         for version, migration_func, description in migrations:
@@ -123,4 +123,20 @@ class MigrationManager:
                     FOREIGN KEY (agent_id) REFERENCES agents(agent_id)
                 )
             """)
+            conn.commit()
+
+    def _migration_v2(self):
+        """Strategic indexing for performance (v2)."""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            # Episodes indexing
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_episodes_agent_timestamp ON episodes (agent_id, timestamp DESC)")
+            
+            # Entities indexing
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_entities_agent_name ON entities (agent_id, name)")
+            
+            # Relationships indexing
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_relationships_agent_source ON relationships (agent_id, source_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_relationships_agent_target ON relationships (agent_id, target_id)")
+            
             conn.commit()

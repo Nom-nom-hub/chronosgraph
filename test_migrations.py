@@ -22,19 +22,24 @@ class TestMigrations(unittest.TestCase):
             cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='migrations'")
             self.assertIsNotNone(cursor.fetchone())
 
-    def test_apply_initial_migration(self):
-        """Test applying the initial v1 migration."""
+    def test_apply_migrations(self):
+        """Test applying all migrations up to v2."""
         manager = MigrationManager(self.db_path)
         manager.apply_migrations()
         
-        self.assertEqual(manager.get_current_version(), 1)
+        self.assertEqual(manager.get_current_version(), 2)
         
         # Verify tables from v1 exist
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             for table in ["agents", "episodes", "entities", "relationships"]:
                 cursor.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name='{table}'")
-                self.assertIsNotNone(cursor.fetchone(), f"Table {table} should exist after v1 migration")
+                self.assertIsNotNone(cursor.fetchone(), f"Table {table} should exist after migrations")
+            
+            # Verify indexes from v2 exist
+            for index in ["idx_episodes_agent_timestamp", "idx_entities_agent_name", "idx_relationships_agent_source", "idx_relationships_agent_target"]:
+                cursor.execute(f"SELECT name FROM sqlite_master WHERE type='index' AND name='{index}'")
+                self.assertIsNotNone(cursor.fetchone(), f"Index {index} should exist after v2 migration")
 
     def test_idempotent_migrations(self):
         """Test that applying migrations multiple times doesn't cause errors."""
@@ -46,7 +51,7 @@ class TestMigrations(unittest.TestCase):
         version_after_second = manager.get_current_version()
         
         self.assertEqual(version_after_first, version_after_second)
-        self.assertEqual(version_after_first, 1)
+        self.assertEqual(version_after_first, 2)
 
 if __name__ == "__main__":
     unittest.main()
