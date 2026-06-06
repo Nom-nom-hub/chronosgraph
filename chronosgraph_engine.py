@@ -114,6 +114,22 @@ class ChronosGraphEngine:
             logger.error(f"Failed to add episode for agent {agent_id}: {e}", extra={"agent_id": agent_id, "error_type": "DatabaseError"})
             raise DatabaseError(e) from e
 
+    def find_entity_by_name(self, agent_id: str, name: str) -> Optional[Dict[str, Any]]:
+        """Find an entity by name for a specific agent."""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
+                cursor.execute(
+                    "SELECT * FROM entities WHERE agent_id = ? AND name = ?",
+                    (agent_id, name)
+                )
+                row = cursor.fetchone()
+                return dict(row) if row else None
+        except sqlite3.Error as e:
+            logger.error(f"Failed to find entity by name {name}: {e}", extra={"agent_id": agent_id, "entity_name": name, "error_type": "DatabaseError"})
+            raise DatabaseError(e) from e
+
     def add_entity(self, agent_id: str, entity_data: Dict[str, Any]) -> str:
         if 'name' not in entity_data or 'type' not in entity_data:
             logger.error("Invalid entity data: missing 'name' or 'type'", extra={"agent_id": agent_id, "error_type": "InvalidEntityDataError"})

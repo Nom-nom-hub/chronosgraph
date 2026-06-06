@@ -135,8 +135,15 @@ class ChronosGraphSDK:
             raise e
 
     def add_knowledge(self, agent_id: str, name: str, description: str, type: str = "concept") -> str:
-        """Manually add an entity."""
+        """Manually add an entity with deduplication."""
         try:
+            # 1. Deduplication Check
+            existing_entity = self.engine.find_entity_by_name(agent_id, name)
+            if existing_entity:
+                logger.debug(f"Entity '{name}' already exists for agent {agent_id}. Skipping creation.", extra={"agent_id": agent_id, "entity_name": name, "entity_id": existing_entity['entity_id']})
+                return existing_entity['entity_id']
+
+            # 2. Create new entity
             entity_data = {
                 "name": name,
                 "description": description,

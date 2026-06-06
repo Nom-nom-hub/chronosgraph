@@ -15,23 +15,28 @@ class FactExtractor:
     def extract_facts(self, text: str) -> Dict[str, List[Dict[str, Any]]]:
         """
         Extracts entities and their relationships from the given text.
+        Refined for higher accuracy and better deduplication.
         """
         prompt = f"""
-        Analyze the following agent experience and extract key entities and their relationships.
+        Analyze the following agent experience and extract key entities and their relationships for a knowledge graph.
         
         Text: "{text}"
         
-        Return the result in strict JSON format with two keys:
-        1. "entities": A list of objects with "name", "type" (e.g., person, place, concept, object), and "description".
-        2. "relationships": A list of objects with "source" (entity name), "target" (entity name), "type" (the relationship), and "strength" (0.0 to 1.0).
+        Instructions:
+        1. Identify unique entities (people, places, objects, concepts, software, events).
+        2. For each entity, provide a clear, concise name and a brief description.
+        3. Identify relationships between these entities or between the "Agent" and these entities.
+        4. Relationship types should be in UPPERCASE (e.g., LIKES, LOCATED_IN, DEVELOPED, MENTIONS).
+        5. Assign a strength (0.0 to 1.0) based on how explicit the relationship is in the text.
+        6. DEDUPLICATION: Use standard names for common entities. If an entity is referred to by multiple names, choose the most formal or descriptive one.
         
-        Example Output:
+        Return the result in strict JSON format:
         {{
             "entities": [
-                {{"name": "ChronosGraph", "type": "software", "description": "A memory database for AI agents."}}
+                {{"name": "Entity Name", "type": "entity_type", "description": "Brief description"}}
             ],
             "relationships": [
-                {{"source": "Agent", "target": "ChronosGraph", "type": "DEVELOPED", "strength": 1.0}}
+                {{"source": "Entity A", "target": "Entity B", "type": "RELATIONSHIP_TYPE", "strength": 0.9}}
             ]
         }}
         """

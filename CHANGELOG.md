@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-06-06
+
+### Added
+- **Entity Deduplication**: Implemented `find_entity_by_name` in `ChronosGraphEngine` and integrated it into `ChronosGraphSDK.add_knowledge` to prevent redundant entity creation.
+- **Refined Fact Extraction**: Updated the LLM prompt in `FactExtractor` to improve extraction accuracy, relationship precision, and provide explicit deduplication instructions to the model.
+- **Deduplication Testing**: Added `test_deduplication.py` to ensure the new deduplication logic works as expected.
+
 ## [0.3.0] - 2026-06-05
 
 ### Added
