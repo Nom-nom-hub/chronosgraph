@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2026-06-07
+
+### Added
+- **Multi-Agent Collaboration**: Introduced granular visibility controls (Private, Shared, Public) for entities, allowing agents to share knowledge securely.
+- **Schema Migration (v3)**: Added `visibility` and `owner_agent_id` columns to the `entities` table and created a `permissions` table for future granular access control.
+- **Enhanced Graph Context**: Updated `get_graph_context` to respect visibility levels, enabling agents to discover shared knowledge while protecting private information.
+- **Collaboration Testing**: Added `test_collaboration.py` to verify knowledge sharing and visibility logic across multiple agents.
+
 ## [0.6.0] - 2026-06-07
 
 ### Added

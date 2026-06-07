@@ -134,8 +134,8 @@ class ChronosGraphSDK:
             logger.error(f"An unexpected error occurred during recall for agent {agent_id} with query '{query}' and context type '{context_type}': {e}", extra={"agent_id": agent_id, "query": query, "context_type": context_type, "error_type": "UnexpectedError"})
             raise e
 
-    def add_knowledge(self, agent_id: str, name: str, description: str, type: str = "concept") -> str:
-        """Manually add an entity with deduplication."""
+    def add_knowledge(self, agent_id: str, name: str, description: str, type: str = "concept", visibility: int = 0) -> str:
+        """Manually add an entity with deduplication and visibility control."""
         try:
             # 1. Deduplication Check
             existing_entity = self.engine.find_entity_by_name(agent_id, name)
@@ -148,6 +148,7 @@ class ChronosGraphSDK:
                 "name": name,
                 "description": description,
                 "type": type,
+                "visibility": visibility,
                 "embedding": self._generate_embedding(f"{name} {description}")
             }
             entity_id = self.engine.add_entity(agent_id, entity_data)

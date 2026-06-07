@@ -8,7 +8,7 @@ The first week of development focuses on establishing a rock-solid foundation fo
 
 ## Phase 2: Feature Expansion and Agent Usability
 
-During the second week, our focus shifts toward enhancing the capabilities and usability of ChronosGraph for complex agent scenarios. We will start by introducing more granular control over multi-agent collaboration and knowledge sharing. To manage long-term memory effectively, we will implement intelligent context pruning and summarization logic. We also plan to develop a graph visualization utility to aid in debugging and understanding agent memory structures. For scalability, we will add support for external vector stores like Pinecone or Weaviate. Finally, we will implement an advanced, natural-language-inspired query language to simplify the traversal of the knowledge graph.
+During the second week, our focus shifts toward enhancing the capabilities and usability of ChronosGraph for complex agent scenarios. We have **successfully completed Phase 2, Day 1**, introducing granular visibility controls (Private, Shared, Public) for entities and a new permissions system. This allows agents to collaborate and share knowledge securely within groups. Next, we will implement intelligent context pruning and summarization logic to manage long-term memory effectively. We also plan to develop a graph visualization utility to aid in debugging and understanding agent memory structures. For scalability, we will add support for external vector stores like Pinecone or Weaviate. Finally, we will implement an advanced, natural-language-inspired query language to simplify the traversal of the knowledge graph.
 
 ## Phase 3: Production Readiness and Final Polish
 

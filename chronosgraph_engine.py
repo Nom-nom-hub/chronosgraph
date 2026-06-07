@@ -152,14 +152,16 @@ class ChronosGraphEngine:
 
                 cursor.execute("""
                     INSERT INTO entities (
-                        entity_id, agent_id, name, type, description, embedding
-                    ) VALUES (?, ?, ?, ?, ?, ?)
+                        entity_id, agent_id, name, type, description, embedding, visibility, owner_agent_id
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     entity_id, agent_id, 
                     entity_data.get("name"),
                     entity_data.get("type"),
                     entity_data.get("description"),
-                    embedding
+                    embedding,
+                    entity_data.get("visibility", 0),
+                    entity_data.get("owner_agent_id", agent_id)
                 ))
                 conn.commit()
             logger.info(f"Entity added: {entity_data.get('name')} with ID {entity_id} for agent {agent_id}", extra={"agent_id": agent_id, "entity_id": entity_id, "entity_name": entity_data.get('name')})
@@ -250,6 +252,7 @@ class ChronosGraphEngine:
                 shared_group = row["shared_group"] if row else None
                 
                 if include_shared and shared_group:
+                    # Search episodes: self or shared in group
                     cursor.execute("""
                         SELECT e.episode_id, e.content, e.embedding, a.name as agent_name 
                         FROM episodes e
@@ -337,42 +340,44 @@ class ChronosGraphEngine:
                     logger.warning(f"Cannot retrieve graph context: Agent not found: {agent_id}", extra={"agent_id": agent_id, "error_type": "AgentNotFoundError"})
                     raise AgentNotFoundError(agent_id)
 
-                # 1. Find the starting entity
-                cursor.execute(
-                    "SELECT entity_id, name, description FROM entities WHERE agent_id = ? AND name = ?",
-                    (agent_id, entity_name)
-                )
+                # 1. Find the starting entity (own entity or shared/public)
+                cursor.execute("""
+                    SELECT entity_id, name, description 
+                    FROM entities 
+                    WHERE name = ? AND (agent_id = ? OR visibility >= 1)
+                """, (entity_name, agent_id))
                 start_node = cursor.fetchone()
                 if not start_node:
                     logger.info(f"Starting entity not found for agent {agent_id} with name {entity_name}", extra={"agent_id": agent_id, "entity_name": entity_name})
                     raise EntityNotFoundError(f"Entity with name {entity_name} not found for agent {agent_id}")
                 
                 # 2. Find all related entities and episodes (1-hop for now, bi-directional)
+                # Respects visibility: 0: Private, 1: Shared, 2: Public
                 cursor.execute("""
                     -- Outgoing relationships to other entities
                     SELECT 'entity' as result_type, e.name as content, r.type as rel_type
                     FROM entities e
                     JOIN relationships r ON e.entity_id = r.target_id
-                    WHERE r.agent_id = ? AND r.source_id = ?
+                    WHERE r.source_id = ? AND (e.agent_id = ? OR e.visibility >= 1)
                     UNION
                     -- Incoming relationships from other entities
                     SELECT 'entity' as result_type, e.name as content, r.type as rel_type
                     FROM entities e
                     JOIN relationships r ON e.entity_id = r.source_id
-                    WHERE r.agent_id = ? AND r.target_id = ?
+                    WHERE r.target_id = ? AND (e.agent_id = ? OR e.visibility >= 1)
                     UNION
                     -- Outgoing relationships to episodes
                     SELECT 'episode' as result_type, ep.content as content, r.type as rel_type
                     FROM episodes ep
                     JOIN relationships r ON ep.episode_id = r.target_id
-                    WHERE r.agent_id = ? AND r.source_id = ?
+                    WHERE r.source_id = ? AND ep.agent_id = ?
                     UNION
                     -- Incoming relationships from episodes
                     SELECT 'episode' as result_type, ep.content as content, r.type as rel_type
                     FROM episodes ep
                     JOIN relationships r ON ep.episode_id = r.source_id
-                    WHERE r.agent_id = ? AND r.target_id = ?
-                """, (agent_id, start_node["entity_id"], agent_id, start_node["entity_id"], agent_id, start_node["entity_id"], agent_id, start_node["entity_id"]))
+                    WHERE r.target_id = ? AND ep.agent_id = ?
+                """, (start_node["entity_id"], agent_id, start_node["entity_id"], agent_id, start_node["entity_id"], agent_id, start_node["entity_id"], agent_id))
                 
                 rows = cursor.fetchall()
                 logger.debug(f"Retrieved graph context for agent {agent_id} and entity {entity_name}, found {len(rows)} results.", extra={"agent_id": agent_id, "entity_name": entity_name, "count": len(rows)})

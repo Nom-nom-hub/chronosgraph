@@ -47,6 +47,7 @@ class MigrationManager:
         migrations = [
             (1, self._migration_v1, "Initial schema creation"),
             (2, self._migration_v2, "Strategic indexing for performance"),
+            (3, self._migration_v3, "Multi-agent sharing and visibility controls"),
         ]
 
         for version, migration_func, description in migrations:
@@ -138,5 +139,37 @@ class MigrationManager:
             # Relationships indexing
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_relationships_agent_source ON relationships (agent_id, source_id)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_relationships_agent_target ON relationships (agent_id, target_id)")
+            
+            conn.commit()
+
+    def _migration_v3(self):
+        """Multi-agent sharing and visibility controls (v3)."""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            # Add visibility column to entities
+            # 0: Private (Agent only), 1: Shared (Group only), 2: Public (All agents)
+            try:
+                cursor.execute("ALTER TABLE entities ADD COLUMN visibility INTEGER DEFAULT 0")
+            except sqlite3.OperationalError:
+                pass # Column might already exist
+            
+            # Add owner_agent_id to entities to track original creator in shared contexts
+            try:
+                cursor.execute("ALTER TABLE entities ADD COLUMN owner_agent_id TEXT")
+            except sqlite3.OperationalError:
+                pass
+            
+            # Add permissions table for granular control
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS permissions (
+                    permission_id TEXT PRIMARY KEY,
+                    agent_id TEXT NOT NULL,
+                    resource_type TEXT NOT NULL, -- 'entity', 'episode', 'group'
+                    resource_id TEXT NOT NULL,
+                    can_read BOOLEAN DEFAULT 1,
+                    can_write BOOLEAN DEFAULT 0,
+                    FOREIGN KEY (agent_id) REFERENCES agents(agent_id)
+                )
+            """)
             
             conn.commit()
