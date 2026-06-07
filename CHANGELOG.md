@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-06-07
+
+### Added
+- **Comprehensive Test Suite**: Added `test_integration.py` for end-to-end agent workflow verification and `test_edge_cases.py` for large volume and malformed data handling.
+- **Bi-directional Graph Traversal**: Updated `get_graph_context` in `ChronosGraphEngine` to support bi-directional relationship lookups, improving the richness of retrieved context.
+- **Integration Stability**: Verified the full system stability by running a consolidated suite of 30+ tests across multiple domains.
+
 ## [0.5.0] - 2026-06-06
 
 ### Added

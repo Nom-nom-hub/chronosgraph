@@ -347,18 +347,32 @@ class ChronosGraphEngine:
                     logger.info(f"Starting entity not found for agent {agent_id} with name {entity_name}", extra={"agent_id": agent_id, "entity_name": entity_name})
                     raise EntityNotFoundError(f"Entity with name {entity_name} not found for agent {agent_id}")
                 
-                # 2. Find all related entities and episodes (1-hop for now)
+                # 2. Find all related entities and episodes (1-hop for now, bi-directional)
                 cursor.execute("""
+                    -- Outgoing relationships to other entities
                     SELECT 'entity' as result_type, e.name as content, r.type as rel_type
                     FROM entities e
                     JOIN relationships r ON e.entity_id = r.target_id
                     WHERE r.agent_id = ? AND r.source_id = ?
                     UNION
+                    -- Incoming relationships from other entities
+                    SELECT 'entity' as result_type, e.name as content, r.type as rel_type
+                    FROM entities e
+                    JOIN relationships r ON e.entity_id = r.source_id
+                    WHERE r.agent_id = ? AND r.target_id = ?
+                    UNION
+                    -- Outgoing relationships to episodes
+                    SELECT 'episode' as result_type, ep.content as content, r.type as rel_type
+                    FROM episodes ep
+                    JOIN relationships r ON ep.episode_id = r.target_id
+                    WHERE r.agent_id = ? AND r.source_id = ?
+                    UNION
+                    -- Incoming relationships from episodes
                     SELECT 'episode' as result_type, ep.content as content, r.type as rel_type
                     FROM episodes ep
                     JOIN relationships r ON ep.episode_id = r.source_id
                     WHERE r.agent_id = ? AND r.target_id = ?
-                """, (agent_id, start_node["entity_id"], agent_id, start_node["entity_id"]))
+                """, (agent_id, start_node["entity_id"], agent_id, start_node["entity_id"], agent_id, start_node["entity_id"], agent_id, start_node["entity_id"]))
                 
                 rows = cursor.fetchall()
                 logger.debug(f"Retrieved graph context for agent {agent_id} and entity {entity_name}, found {len(rows)} results.", extra={"agent_id": agent_id, "entity_name": entity_name, "count": len(rows)})
