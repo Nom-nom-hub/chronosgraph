@@ -16,13 +16,15 @@ from .exceptions import (
 )
 from .logger import logger
 from .migrations import MigrationManager
+from .vector_store import VectorStore, LocalVectorStore
 
 
 class ChronosGraphEngine:
-    def __init__(self, db_path: str = "chronosgraph.db"):
+    def __init__(self, db_path: str = "chronosgraph.db", vector_store: Optional[VectorStore] = None):
         self.db_path = db_path
         self.migration_manager = MigrationManager(self.db_path)
         self._initialize_db()
+        self.vector_store = vector_store or LocalVectorStore(self.db_path)
         logger.info(f"ChronosGraphEngine initialized with database: {self.db_path}")
 
     def _initialize_db(self):
@@ -250,75 +252,37 @@ class ChronosGraphEngine:
 
     def semantic_search(self, agent_id: str, query_embedding: List[float], limit: int = 5, include_shared: bool = True) -> List[Dict[str, Any]]:
         """
-        Simple cosine similarity search in SQLite. 
+        Similarity search using the configured VectorStore.
         Supports searching across a shared group of agents.
         """
         try:
-            query_vec = np.array(query_embedding, dtype=np.float32)
-            
+            # 1. Verify agent exists and find shared group
             with sqlite3.connect(self.db_path) as conn:
                 conn.row_factory = sqlite3.Row
                 cursor = conn.cursor()
-                
-                # Verify agent exists
-                cursor.execute("SELECT 1 FROM agents WHERE agent_id = ?", (agent_id,))
-                if not cursor.fetchone():
-                    logger.warning(f"Cannot perform semantic search: Agent not found: {agent_id}", extra={"agent_id": agent_id, "error_type": "AgentNotFoundError"})
-                    raise AgentNotFoundError(agent_id)
-
-                # Find shared group
                 cursor.execute("SELECT shared_group FROM agents WHERE agent_id = ?", (agent_id,))
                 row = cursor.fetchone()
-                shared_group = row["shared_group"] if row else None
+                if row is None:
+                    logger.warning(f"Cannot perform semantic search: Agent not found: {agent_id}", extra={"agent_id": agent_id, "error_type": "AgentNotFoundError"})
+                    raise AgentNotFoundError(agent_id)
                 
-                if include_shared and shared_group:
-                    # Search episodes: self or shared in group
-                    cursor.execute("""
-                        SELECT e.episode_id, e.content, e.embedding, a.name as agent_name 
-                        FROM episodes e
-                        JOIN agents a ON e.agent_id = a.agent_id
-                        WHERE (e.agent_id = ? OR a.shared_group = ?) AND e.embedding IS NOT NULL
-                    """, (agent_id, shared_group))
-                else:
-                    cursor.execute(
-                        "SELECT episode_id, content, embedding, 'self' as agent_name FROM episodes WHERE agent_id = ? AND embedding IS NOT NULL",
-                        (agent_id,)
-                    )
-                rows = cursor.fetchall()
-                if not rows:
-                    return []
+                shared_group = row["shared_group"]
 
-                # Vectorized cosine similarity calculation
-                episode_ids = [row["episode_id"] for row in rows]
-                contents = [row["content"] for row in rows]
-                agent_names = [row["agent_name"] for row in rows]
-                
-                # Stack all stored embeddings into a single matrix
-                stored_matrix = np.stack([np.frombuffer(row["embedding"], dtype=np.float32) for row in rows])
-                
-                # Calculate norms
-                query_norm = np.linalg.norm(query_vec)
-                stored_norms = np.linalg.norm(stored_matrix, axis=1)
-                
-                # Cosine similarity: (A . B) / (||A|| * ||B||)
-                dot_products = np.dot(stored_matrix, query_vec)
-                similarities = dot_products / (query_norm * stored_norms)
-                
-                results = []
-                for i in range(len(rows)):
-                    results.append({
-                        "episode_id": episode_ids[i],
-                        "content": contents[i],
-                        "agent_name": agent_names[i],
-                        "similarity": float(similarities[i])
-                    })
-                
-                # Sort by similarity descending
-                results.sort(key=lambda x: x["similarity"], reverse=True)
-                logger.debug(f"Semantic search performed for agent {agent_id}, found {len(results)} results.", extra={"agent_id": agent_id, "query_embedding_len": len(query_embedding), "results_count": len(results)})
-                return results[:limit]
-        except sqlite3.Error as e:
-            logger.error(f"Failed to perform semantic search for agent {agent_id}: {e}", extra={"agent_id": agent_id, "error_type": "DatabaseError"})
+            # 2. Delegate search to the vector store
+            results = self.vector_store.search(
+                agent_id=agent_id,
+                query_embedding=query_embedding,
+                limit=limit,
+                include_shared=include_shared,
+                shared_group=shared_group
+            )
+            
+            logger.debug(f"Semantic search performed for agent {agent_id}, found {len(results)} results.", extra={"agent_id": agent_id, "results_count": len(results)})
+            return results
+        except Exception as e:
+            if isinstance(e, AgentNotFoundError):
+                raise e
+            logger.error(f"Failed to perform semantic search for agent {agent_id}: {e}", extra={"agent_id": agent_id, "error_type": e.__class__.__name__})
             raise DatabaseError(e) from e
 
     def get_related_entities(self, agent_id: str, source_id: str) -> List[Dict[str, Any]]:

@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0] - 2026-08-11
+
+### Added
+- **Vector Store Abstraction**: Introduced a pluggable `VectorStore` interface in `vector_store.py`, decoupling the memory engine from specific vector database implementations.
+- **Local Vector Store**: Refactored the existing SQLite and NumPy-based similarity search into a dedicated `LocalVectorStore` class.
+- **Scalability Architecture**: Added a scaffold for `PineconeVectorStore`, providing a clear path for integrating high-performance external vector databases.
+- **Engine Refactoring**: Updated `ChronosGraphEngine` to depend on the `VectorStore` abstraction, allowing users to swap memory backends during initialization.
+- **Vector Store Testing**: Added `test_vector_store.py` to verify the delegation of semantic search and correct initialization of the vector store architecture.
+
 ## [0.9.0] - 2026-08-11
 
 ### Added
