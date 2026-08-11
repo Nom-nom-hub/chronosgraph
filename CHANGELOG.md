@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0] - 2026-08-11
+
+### Added
+- **v1.0.0 Production Release**: Reached the first major stable milestone for ChronosGraph.
+- **Advanced NL Query Language**: Integrated a GPT-4o powered `QueryEngine` for natural language interaction with agent memory.
+- **Security Hardening**: Implemented strict input validation, UUID verification, and name sanitization across the engine and SDK.
+- **CI/CD Pipeline**: Added GitHub Actions workflow for automated testing on every push and pull request.
+- **Comprehensive Documentation**: Updated README, added a professional tutorial, and finalized the SDK API documentation.
+- **Vector Store Abstraction**: Introduced a pluggable `VectorStore` interface, decoupling the memory engine from specific implementations.
+- **Local Vector Store**: Refactored the existing SQLite and NumPy-based similarity search into a dedicated `LocalVectorStore` class.
+- **Scalability Architecture**: Added a scaffold for `PineconeVectorStore` for future high-performance integrations.
+
 ## [0.10.0] - 2026-08-11
 
 ### Added

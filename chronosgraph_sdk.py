@@ -4,6 +4,7 @@ from openai import OpenAI
 from .chronosgraph_engine import ChronosGraphEngine
 from .fact_extractor import FactExtractor
 from .summarizer import MemorySummarizer
+from .query_engine import QueryEngine
 from .exceptions import (
     AgentNotFoundError,
     DatabaseError,
@@ -27,6 +28,7 @@ class ChronosGraphSDK:
             self.client = openai_client or OpenAI()
             self.extractor = FactExtractor(self.client)
             self.summarizer = MemorySummarizer(self.client)
+            self.query_engine = QueryEngine(self.engine, self.client)
             logger.info(f"ChronosGraphSDK initialized with database: {db_path}")
         except Exception as e:
             logger.error(f"Failed to initialize ChronosGraphSDK: {e}", extra={"error_type": "InitializationError"})
@@ -252,4 +254,22 @@ class ChronosGraphSDK:
             return mermaid_str
         except Exception as e:
             logger.error(f"Failed to visualize graph for agent {agent_id}: {e}", extra={"agent_id": agent_id, "error_type": "VisualizationError"})
+            raise e
+
+    def ask(self, agent_id: str, nl_query: str) -> Dict[str, Any]:
+        """
+        Advanced natural language query interface.
+        """
+        try:
+            results = self.query_engine.query(agent_id, nl_query)
+            
+            # If semantic search is required, perform it now using the SDK's embedding logic
+            if results.get("semantic_search_required"):
+                semantic_query = results.get("semantic_query", nl_query)
+                semantic_results = self.recall(agent_id, semantic_query, context_type='semantic')
+                results["semantic_results"] = semantic_results
+            
+            return results
+        except Exception as e:
+            logger.error(f"Failed to process NL query for agent {agent_id}: {e}", extra={"agent_id": agent_id, "error_type": "QueryError"})
             raise e

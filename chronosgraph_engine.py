@@ -1,6 +1,7 @@
 import json
 import sqlite3
 import uuid
+import re
 from datetime import UTC, datetime
 from typing import Any, Dict, List, Optional
 
@@ -36,7 +37,24 @@ class ChronosGraphEngine:
             logger.error(f"Database initialization or migration failed: {e}", extra={"error_type": "DatabaseError"})
             raise DatabaseError(e) from e
 
+    def _validate_id(self, id_str: str, name: str = "ID"):
+        """Validates that a string is a valid UUID."""
+        if not id_str:
+            raise ValueError(f"{name} cannot be empty.")
+        try:
+            uuid.UUID(str(id_str))
+        except ValueError:
+            raise ValueError(f"Invalid {name} format: {id_str}. Must be a valid UUID.")
+
+    def _validate_name(self, name: str):
+        """Validates that a name contains only safe characters."""
+        if not name or len(name) > 255:
+            raise ValueError("Name must be between 1 and 255 characters.")
+        if not re.match(r"^[a-zA-Z0-9_\-\s\.]+$", name):
+            raise ValueError(f"Name contains invalid characters: {name}")
+
     def get_agent(self, agent_id: str) -> Dict[str, Any]:
+        self._validate_id(agent_id, "agent_id")
         try:
             with sqlite3.connect(self.db_path) as conn:
                 conn.row_factory = sqlite3.Row
@@ -53,6 +71,10 @@ class ChronosGraphEngine:
             raise DatabaseError(e) from e
 
     def register_agent(self, name: str, description: str = "", shared_group: str = None) -> str:
+        self._validate_name(name)
+        if shared_group:
+            self._validate_name(shared_group)
+            
         agent_id = str(uuid.uuid4())
         try:
             with sqlite3.connect(self.db_path) as conn:
@@ -72,6 +94,7 @@ class ChronosGraphEngine:
             raise DatabaseError(e) from e
 
     def add_episode(self, agent_id: str, episode_data: Dict[str, Any]) -> str:
+        self._validate_id(agent_id, "agent_id")
         if 'type' not in episode_data or 'content' not in episode_data:
             logger.error("Invalid episode data: missing 'type' or 'content'", extra={"agent_id": agent_id, "error_type": "InvalidEpisodeDataError"})
             raise InvalidEpisodeDataError("Episode data must contain 'type' and 'content'.")
@@ -133,6 +156,8 @@ class ChronosGraphEngine:
             raise DatabaseError(e) from e
 
     def add_entity(self, agent_id: str, entity_data: Dict[str, Any]) -> str:
+        self._validate_id(agent_id, "agent_id")
+        self._validate_name(entity_data.get('name', ''))
         if 'name' not in entity_data or 'type' not in entity_data:
             logger.error("Invalid entity data: missing 'name' or 'type'", extra={"agent_id": agent_id, "error_type": "InvalidEntityDataError"})
             raise InvalidEpisodeDataError("Entity data must contain 'name' and 'type'.")
