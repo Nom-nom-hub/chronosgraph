@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2026-08-11
+
+### Added
+- **Graph Visualization Utility**: Implemented `export_mermaid_graph` in `ChronosGraphEngine` and `visualize_graph` in the SDK. This allows developers to export the agent's knowledge graph as a Mermaid.js diagram for debugging and analysis.
+- **Bi-directional Node Mapping**: Enhanced the visualization logic to include both entities and recent episodes, showing how experiences link to the knowledge graph.
+- **Visualization Testing**: Added `test_visualization.py` to ensure correct Mermaid string generation and file export functionality.
+
 ## [0.8.0] - 2026-08-11
 
 ### Added

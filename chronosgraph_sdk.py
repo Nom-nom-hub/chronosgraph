@@ -236,3 +236,20 @@ class ChronosGraphSDK:
         except Exception as e:
             logger.error(f"Failed to summarize memory for agent {agent_id}: {e}", extra={"agent_id": agent_id, "error_type": "SummarizationError"})
             raise e
+
+    def visualize_graph(self, agent_id: str, output_file: Optional[str] = None) -> str:
+        """
+        Generates a Mermaid graph for the agent and optionally saves it to a file.
+        """
+        try:
+            mermaid_str = self.engine.export_mermaid_graph(agent_id)
+            
+            if output_file:
+                with open(output_file, "w") as f:
+                    f.write(mermaid_str)
+                logger.info(f"Mermaid graph saved to {output_file} for agent {agent_id}.")
+            
+            return mermaid_str
+        except Exception as e:
+            logger.error(f"Failed to visualize graph for agent {agent_id}: {e}", extra={"agent_id": agent_id, "error_type": "VisualizationError"})
+            raise e

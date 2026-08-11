@@ -406,6 +406,72 @@ class ChronosGraphEngine:
             logger.error(f"Failed to retrieve graph context for agent {agent_id} and entity {entity_name}: {e}", extra={"agent_id": agent_id, "entity_name": entity_name, "error_type": "DatabaseError"})
             raise DatabaseError(e) from e
 
+    def export_mermaid_graph(self, agent_id: str) -> str:
+        """
+        Exports the agent's knowledge graph as a Mermaid.js diagram string.
+        """
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
+                
+                # Verify agent exists
+                cursor.execute("SELECT name FROM agents WHERE agent_id = ?", (agent_id,))
+                agent_row = cursor.fetchone()
+                if not agent_row:
+                    raise AgentNotFoundError(agent_id)
+                agent_name = agent_row["name"]
+
+                # Fetch all entities
+                cursor.execute("SELECT entity_id, name, type FROM entities WHERE agent_id = ?", (agent_id,))
+                entities = cursor.fetchall()
+                
+                # Fetch all relationships
+                cursor.execute("""
+                    SELECT r.source_id, r.target_id, r.type, r.strength
+                    FROM relationships r
+                    WHERE r.agent_id = ?
+                """, (agent_id,))
+                relationships = cursor.fetchall()
+                
+                # Fetch recent episodes to link them if they are part of the graph
+                cursor.execute("SELECT episode_id, content FROM episodes WHERE agent_id = ? LIMIT 20", (agent_id,))
+                episodes = cursor.fetchall()
+                
+                mermaid = ["graph TD"]
+                
+                # Create a map for display names
+                node_map = {}
+                
+                # Add entities to Mermaid
+                for ent in entities:
+                    eid = ent["entity_id"].replace("-", "_")
+                    name = ent["name"]
+                    etype = ent["type"]
+                    mermaid.append(f"    {eid}[\"{name} ({etype})\"]")
+                    node_map[ent["entity_id"]] = eid
+                
+                # Add episodes to Mermaid
+                for ep in episodes:
+                    epid = ep["episode_id"].replace("-", "_")
+                    content = ep["content"][:30] + "..." if len(ep["content"]) > 30 else ep["content"]
+                    mermaid.append(f"    {epid}(\"{content}\")")
+                    node_map[ep["episode_id"]] = epid
+                
+                # Add relationships
+                for rel in relationships:
+                    src = rel["source_id"]
+                    tgt = rel["target_id"]
+                    rtype = rel["type"]
+                    
+                    if src in node_map and tgt in node_map:
+                        mermaid.append(f"    {node_map[src]} -- \"{rtype}\" --> {node_map[tgt]}")
+                
+                return "\n".join(mermaid)
+        except sqlite3.Error as e:
+            logger.error(f"Failed to export Mermaid graph for agent {agent_id}: {e}", extra={"agent_id": agent_id, "error_type": "DatabaseError"})
+            raise DatabaseError(e) from e
+
 if __name__ == "__main__":
     # Basic smoke test
     engine = ChronosGraphEngine("test_chronos.db")
