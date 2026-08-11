@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **Graph Visualization Utility**: Implemented `export_mermaid_graph` in `ChronosGraphEngine` and `visualize_graph` in the SDK. This allows developers to export the agent's knowledge graph as a Mermaid.js diagram for debugging and analysis.
+- **Interactive HTML Viewer**: Created a standalone HTML visualization tool that uses Mermaid.js to render agent memory graphs with zoom and pan capabilities, aiding in deep debugging.
 - **Bi-directional Node Mapping**: Enhanced the visualization logic to include both entities and recent episodes, showing how experiences link to the knowledge graph.
 - **Visualization Testing**: Added `test_visualization.py` to ensure correct Mermaid string generation and file export functionality.
 
